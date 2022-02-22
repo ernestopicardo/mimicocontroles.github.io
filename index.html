@@ -964,15 +964,10 @@ for storing references to ports.)
 		function agregaSeccionador(){
 			console.log('agrega Seccionador');
 
-			var seccionador = graph.insertVertex(parent, null, 'Seccionador', 200, 200, 80, 80,
+			var seccionador = graph.insertVertex(parent, null, 'Seccionador', 200, 200, 40, 40,
 					'shape=seccionador;verticalLabelPosition=top;verticalAlign=bottom;strokeColor=#000000;');
 					seccionador.setConnectable(false);
-			
-			var seccionador_c1 = graph.insertVertex(seccionador, null, '1', 0, 0, 10, 40,
-			 'shape=line;align=left;verticalAlign=middle;fontSize=10;routingCenterX=-0.5;'+ 'spacingLeft=12;fontColor=' + fontColor + ';strokeColor=' + strokeColor,
-			  true);
-			// seccionador_c1.geometry.relative = true;
-			 seccionador_c1.geometry.offset = new mxPoint(0, 0);
+
 
 			// var seccionador = graph.insertVertex(parent, null, null, 300, 300, 40, 40);
 			// seccionador.style= 'rotation=45';
