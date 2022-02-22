@@ -52,6 +52,7 @@ for storing references to ports.)
 			margin-bottom: 10px;
 		}
 	</style>
+
 	<!-- Sets the basepath for the library if not in same directory -->
 	<script type="text/javascript">
 		mxBasePath = '../src';
@@ -966,7 +967,7 @@ for storing references to ports.)
 
 			var seccionador = graph.insertVertex(parent, null, 'Seccionador', 200, 200, 40, 40,
 					'shape=seccionador;verticalLabelPosition=top;verticalAlign=bottom;strokeColor=#000000;');
-					seccionador.setConnectable(false);
+					seccionador.setConnectable(true);
 
 
 			// var seccionador = graph.insertVertex(parent, null, null, 300, 300, 40, 40);
