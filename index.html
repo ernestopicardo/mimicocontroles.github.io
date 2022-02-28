@@ -36,20 +36,57 @@ for storing references to ports.)
 
 </head>
 <body onload="main()">
-	<div class="botonera">
-		<button onclick="agregaResistor()">Agregar Resistor</button>
+	<div id="toolbar"class="botonera">
+		<!-- <button onclick="agregaResistor()">Agregar Resistor</button>
 		<button onclick="agregaInterruptor()">Agregar Interruptor</button>
-		<button onclick="agregaSeccionador()">Agregar Seccionador</button>
+		<button onclick="agregaSeccionador()">Agregar Seccionador</button> -->
 	</div>
-	<div id="graphContainer"
-		style="overflow:hidden;position:relative;width:600px;height:600px;border:1px solid gray;background:url('images/wires-grid.gif');background-position:-1px 0px;cursor:crosshair;">
+	<div id="graphContainer" class="flujo">
+	</div>
+	<div id="previewSelect" class="preview">
+	</div>
+
+	<div id="buttons" class="control_buttons">
+
 	</div>
 
 
 	
 	<style>
+		/* img.mxToolbarMode{
+			 visibility: hidden; 
+		} */
+
 		.botonera {
-			margin-bottom: 10px;
+			position: absolute;
+			overflow: hidden;
+			left: 0px;
+			top: 0px;
+			width: 30px;
+			padding: 5px;
+
+		}
+		.flujo {
+			position: absolute;
+			overflow: hidden;
+			left: 50px;
+			width: 600px;
+			height: 600px;
+			border: 1px solid gray;
+			background:url('images/wires-grid.gif');
+			background-position:-1px 0px;
+			cursor:crosshair;
+		}
+		.control_buttons {
+			position: absolute;
+			top: 610px;
+		}
+		.preview{
+			position: absolute;
+			overflow: hidden;
+			left:  650px;
+			width: 60px;
+			height: 60px;
 		}
 	</style>
 
@@ -86,6 +123,7 @@ for storing references to ports.)
 		// Enables snapping waypoints to terminals
 	 	mxEdgeHandler.prototype.snapToTerminals = true;
 		 var container = document.getElementById('graphContainer');
+		 var previewContainer =  document.getElementById('previewSelect')
 		 var graph = new mxGraph(document.getElementById('graphContainer'));
 		 var parent = graph.getDefaultParent();
 
@@ -121,6 +159,84 @@ for storing references to ports.)
 			style['resizable'] = '0';
 			style['rounded'] = '1';
 			style['strokeWidth'] = strokeWidth;
+
+			// Creates new toolbar without event processing
+			var toolbar = new mxToolbar(document.getElementById('toolbar'));
+			toolbar.enabled = false;
+
+			var separator = function()
+				{
+					toolbar.addBreak;
+				}
+
+			var addVertex = function(icon, w, h, style, title)
+				{
+					var vertex = new mxCell(null, new mxGeometry(0, 0, w, h), style);
+					vertex.setVertex(true);
+				
+					var img = addToolbarItem(graph, toolbar, vertex, icon, title);
+					img.enabled = false;
+					
+					graph.getSelectionModel().addListener(mxEvent.CHANGE, function()
+					{
+						var tmp = graph.isSelectionEmpty();
+						mxUtils.setOpacity(img, (tmp) ? 100 : 20);
+						img.enabled = tmp;
+					});
+				};
+				
+				addVertex('images/toolbar/resistor.svg', 80, 40, 'shape=resistor', 'Resistor');
+				addVertex('images/toolbar/interruptor.svg', 40, 40, 'shape=interruptor', 'Interuptor');
+				addVertex('images/toolbar/seccionador.svg', 40, 40, 'shape=seccionador', 'Seccionador');
+
+			
+	    function addToolbarItem(graph, toolbar, prototype, image, title)
+		{
+			// Function that is executed when the image is dropped on
+			// the graph. The cell argument points to the cell under
+			// the mousepointer if there is one.
+			var funct = function(graph, evt, cell, x, y)
+			{
+				graph.stopEditing(false);
+
+				var vertex = graph.getModel().cloneCell(prototype);
+				vertex.geometry.x = x;
+				vertex.geometry.y = y;
+					
+				graph.addCell(vertex);
+				// si deseo dejarlo seleccionado al soltarlo
+				// graph.setSelectionCell(vertex);
+			}
+			
+			// Creates the image which is used as the drag icon (preview)
+			var img = toolbar.addMode(title, image, function(evt, cell)
+			{
+				var pt = this.graph.getPointForEvent(evt);
+				funct(graph, evt, cell, pt.x, pt.y);
+			});
+			
+			// Disables dragging if element is disabled. This is a workaround
+			// for wrong event order in IE. Following is a dummy listener that
+			// is invoked as the last listener in IE.
+			mxEvent.addListener(img, 'mousedown', function(evt)
+			{
+				// do nothing
+			});
+			
+			// This listener is always called first before any other listener
+			// in all browsers.
+			mxEvent.addListener(img, 'mousedown', function(evt)
+			{
+				if (img.enabled == false)
+				{
+					mxEvent.consume(evt);
+				}
+			});
+						
+			mxUtils.makeDraggable(img, graph, funct, previewContainer, 0 , 0 );
+			
+			return img;
+		}
 		
 		function main()
 		{
@@ -302,13 +418,15 @@ for storing references to ports.)
 			{
 				graph.getModel().endUpdate();
 			}
+
+			var botonera = document.getElementById('buttons');
 			
-			document.body.appendChild(mxUtils.button('Zoom In', function()
+			botonera.appendChild(mxUtils.button('Zoom In', function()
 			{
 				graph.zoomIn();
 			}));
 			
-			document.body.appendChild(mxUtils.button('Zoom Out', function()
+			botonera.appendChild(mxUtils.button('Zoom Out', function()
 			{
 				graph.zoomOut();
 			}));
@@ -322,18 +440,18 @@ for storing references to ports.)
 			graph.getModel().addListener(mxEvent.UNDO, listener);
 			graph.getView().addListener(mxEvent.UNDO, listener);
 			
-			document.body.appendChild(mxUtils.button('Undo', function()
+			botonera.appendChild(mxUtils.button('Undo', function()
 			{
 				undoManager.undo();
 			}));
 			
-			document.body.appendChild(mxUtils.button('Redo', function()
+			botonera.appendChild(mxUtils.button('Redo', function()
 			{
 				undoManager.redo();
 			}));
 
 			// Shows XML for debugging the actual model
-			document.body.appendChild(mxUtils.button('Delete', function()
+			botonera.appendChild(mxUtils.button('Delete', function()
 			{
 				graph.removeCells();
 			}));
@@ -342,8 +460,8 @@ for storing references to ports.)
 			var checkbox = document.createElement('input');
 			checkbox.setAttribute('type', 'checkbox');
 			
-			document.body.appendChild(checkbox);
-			mxUtils.write(document.body, 'Wire Mode');
+			botonera.appendChild(checkbox);
+			mxUtils.write(botonera, 'Wire Mode');
 			
 			// Starts connections on the background in wire-mode
 			var connectionHandlerIsStartEvent = graph.connectionHandler.isStartEvent;
@@ -384,8 +502,8 @@ for storing references to ports.)
 			checkbox2.setAttribute('type', 'checkbox');
 			checkbox2.setAttribute('checked', 'true');
 			
-			document.body.appendChild(checkbox2);
-			mxUtils.write(document.body, 'Grid');
+			botonera.appendChild(checkbox2);
+			mxUtils.write(botonera, 'Grid');
 			
 			mxEvent.addListener(checkbox2, 'click', function(evt)
 			{
@@ -781,38 +899,6 @@ for storing references to ports.)
 
 		mxCellRenderer.registerShape('interruptor', InterruptorShape);
 	</script>
-
-    <!--  
-	Imlements a custom ERNE shape. Direction currently ignored here.
--->
-	<!-- <script type="text/javascript">
-		function ResistorShape() { };
-		ResistorShape.prototype = new mxCylinder();
-		ResistorShape.prototype.constructor = ResistorShape;
-
-		ResistorShape.prototype.redrawPath = function(path, x, y, w, h, isForeground)
-		{
-			var dx = w / 16;
-
-			if (isForeground)
-			{
-				path.moveTo(0, h / 2);
-				path.lineTo(2 * dx, h / 2);
-				path.lineTo(3 * dx, 0);
-				path.lineTo(5 * dx, h);
-				path.lineTo(7 * dx, 0);
-				path.lineTo(9 * dx, h);
-				path.lineTo(11 * dx, 0);
-				path.lineTo(13 * dx, h);
-				path.lineTo(14 * dx, h / 2);
-				path.lineTo(16 * dx, h / 2);
-
-				path.end();
-			}
-		};
-
-		mxCellRenderer.registerShape('resistor', ResistorShape);
-	</script> -->
 
 
 	<script type="text/javascript">
