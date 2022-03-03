@@ -36,34 +36,41 @@ for storing references to ports.)
 
 </head>
 <body onload="main()">
-	<div id="toolbar"class="botonera">
-		<!-- <button onclick="agregaResistor()">Agregar Resistor</button>
-		<button onclick="agregaInterruptor()">Agregar Interruptor</button>
-		<button onclick="agregaSeccionador()">Agregar Seccionador</button> -->
+	<div id="toolbar"class="herramientas"></div>
+	<div id="graphContainer" class="flujo"></div>
+	<div id="properties" class="propiedades">
+		<form id="formPropiedades">
+			<div style="margin-bottom: 10px;">Seleccione Color: <input type="color" name="color" ></div>
+			<div style="margin-bottom: 10px;">Habilitado: <input type="checkbox" name="enable" ></div>
+			<div style="text-align: center;"><input type="submit" value="Guardar"></div>
+		</form>
 	</div>
-	<div id="graphContainer" class="flujo">
-	</div>
-	<div id="previewSelect" class="preview">
-	</div>
-
-	<div id="buttons" class="control_buttons">
-
-	</div>
-
+	<div id="previewSelect" class="preview"></div>
+	<div id="buttons" class="control_buttons"></div>
 
 	
 	<style>
-		/* img.mxToolbarMode{
-			 visibility: hidden; 
-		} */
-
-		.botonera {
+		#properties{
+			position: absolute;
+			overflow: hidden;
+			left: 652px;
+			top: 0px;
+			width: 200px;
+			height:300px;
+			border: solid 1px #000000;
+			padding: 5px;
+			display: none;
+		}
+		.herramientas {
 			position: absolute;
 			overflow: hidden;
 			left: 0px;
 			top: 0px;
 			width: 30px;
 			padding: 5px;
+			border: solid 1px #000000;
+			border-radius: 5px;
+			margin: 5px;
 
 		}
 		.flujo {
@@ -80,6 +87,8 @@ for storing references to ports.)
 		.control_buttons {
 			position: absolute;
 			top: 610px;
+			left: 50px;
+			margin-top: 10px;
 		}
 		.preview{
 			position: absolute;
@@ -87,6 +96,14 @@ for storing references to ports.)
 			left:  650px;
 			width: 60px;
 			height: 60px;
+		}
+		.mxTooltip{
+			position: absolute;
+		}
+		.propiedades{
+			margin: 5px;
+			padding: 5px;
+			border-radius: 5px;
 		}
 	</style>
 
@@ -96,7 +113,7 @@ for storing references to ports.)
 	</script>
 
 	<!-- Loads and initializes the library -->
-	<script type="text/javascript" src="mxClient.js"></script>
+	<script type="text/javascript" src="src/mxClient.js"></script>
 	<script type="text/javascript">
 		// If connect preview is not moved away then getCellAt is used to detect the cell under
 		// the mouse if the mouse is over the preview shape in IE (no event transparency), ie.
@@ -122,12 +139,24 @@ for storing references to ports.)
 		
 		// Enables snapping waypoints to terminals
 	 	mxEdgeHandler.prototype.snapToTerminals = true;
-		 var container = document.getElementById('graphContainer');
-		 var previewContainer =  document.getElementById('previewSelect')
-		 var graph = new mxGraph(document.getElementById('graphContainer'));
-		 var parent = graph.getDefaultParent();
 
-		 var labelBackground =  '#FFFFFF';
+
+		 /* VARIABLES GENERALES*/
+		var container = document.getElementById('graphContainer');
+		var propertiesContainer = document.getElementById('properties');
+		var previewContainer =  document.getElementById('previewSelect');
+		var formProperties = document.getElementById('formPropiedades');
+		var state = null;
+		var selectedComponentProperties = {}
+
+
+		var graph = new mxGraph(document.getElementById('graphContainer'));
+		var parent = graph.getDefaultParent();
+
+		// Adds a special tooltip for edges
+		graph.setTooltips(true);
+
+		var labelBackground =  '#FFFFFF';
 		var fontColor =   '#000000';
 		var strokeColor =  '#000000';
 		var fillColor =   '#FFFFFF';
@@ -164,14 +193,10 @@ for storing references to ports.)
 			var toolbar = new mxToolbar(document.getElementById('toolbar'));
 			toolbar.enabled = false;
 
-			var separator = function()
-				{
-					toolbar.addBreak;
-				}
-
 			var addVertex = function(icon, w, h, style, title)
 				{
-					var vertex = new mxCell(null, new mxGeometry(0, 0, w, h), style);
+					var vertex = new mxCell(title, new mxGeometry(0, 0, w, h), style);
+					
 					vertex.setVertex(true);
 				
 					var img = addToolbarItem(graph, toolbar, vertex, icon, title);
@@ -179,15 +204,26 @@ for storing references to ports.)
 					
 					graph.getSelectionModel().addListener(mxEvent.CHANGE, function()
 					{
+
 						var tmp = graph.isSelectionEmpty();
 						mxUtils.setOpacity(img, (tmp) ? 100 : 20);
 						img.enabled = tmp;
+
 					});
+
+
 				};
+
+			// TODO: RECORRER UN FOR PARA CADA ELEMENTO
 				
-				addVertex('images/toolbar/resistor.svg', 80, 40, 'shape=resistor', 'Resistor');
-				addVertex('images/toolbar/interruptor.svg', 40, 40, 'shape=interruptor', 'Interuptor');
-				addVertex('images/toolbar/seccionador.svg', 40, 40, 'shape=seccionador', 'Seccionador');
+			addVertex('images/toolbar/resistor.svg', 80, 40, 'shape=resistor;verticalLabelPosition=top', 'Resistor');
+			addVertex('images/toolbar/interruptor.svg', 40, 40, 'shape=interruptor;verticalLabelPosition=top', 'Interuptor');
+			addVertex('images/toolbar/seccionador.svg', 40, 40, 'shape=seccionador;verticalLabelPosition=top', 'Seccionador');
+
+			// graph.getSelectionModel().addListener(mxEvent.CHANGE, function()
+			// 		{
+			// 			console.log('test');
+			// 		})
 
 			
 	    function addToolbarItem(graph, toolbar, prototype, image, title)
@@ -199,11 +235,22 @@ for storing references to ports.)
 			{
 				graph.stopEditing(false);
 
+				var doc = mxUtils.createXmlDocument();
+
 				var vertex = graph.getModel().cloneCell(prototype);
 				vertex.geometry.x = x;
 				vertex.geometry.y = y;
+				var w = vertex.geometry.width;
+				var h = vertex.geometry.height;
+
+				var node = doc.createElement(title)
+				node.setAttribute('color', strokeColor);
+				node.setAttribute('enable', false);
+
+				graph.insertVertex(graph.getDefaultParent(),null , node, x, y, w, h, vertex.style );
 					
-				graph.addCell(vertex);
+				//graph.addCell(vertex);  //<-- CAMBIO LA FORMA DE GENERAR OBJETO
+
 				// si deseo dejarlo seleccionado al soltarlo
 				// graph.setSelectionCell(vertex);
 			}
@@ -237,7 +284,67 @@ for storing references to ports.)
 			
 			return img;
 		}
-		
+
+	//	Cambia el color al hacer click sobre un elemento
+
+		graph.addMouseListener(
+		{
+			mouseDown: function(sender, me)
+			{
+			// cargo la variable global state con el objeto seleccionado	
+			 state = me.state;
+				if (state) {
+					if(state.cell.vertex){
+						propertiesContainer.style.display = 'block';
+						// obtengo las propiedades generadas y las hago globales para cargarlas en el formulario
+						formProperties.elements['color'].value = state.cell.value.getAttribute('color');
+					 	formProperties.elements['enable'].checked = state.cell.value.getAttribute('enable') === 'true' ? true : false;
+					
+					} else {
+						propertiesContainer.style.display = 'none';
+					}
+				}else {
+					propertiesContainer.style.display = 'none';
+				}
+			},
+			mouseMove: function(sender, me){},
+			mouseUp: function(sender, me) {},
+			dragEnter: function(evt, state){},
+			dragLeave: function(evt, state){}
+		});
+
+		// mxEvent.addListener(img, 'click', function(evt){
+
+		// })
+
+		function updateStyle(state, properties)
+		{
+			console.log(state)
+			// CAMBIO EN LA VISTA
+			state.style[mxConstants.STYLE_STROKECOLOR] = properties.color;
+
+			// actualiza los cambios en la vista.
+			state.shape.apply(state);
+			state.shape.redraw();
+
+			// CAMBIO EN EL COMPONENTE (XML)
+			state.cell.setAttribute('color', properties.color);
+			state.cell.setAttribute('enable', properties.enable);
+		//	state.cell.style[mxConstants.STYLE_STROKECOLOR] = properties.color;
+		};
+
+
+		formProperties.addEventListener('submit', function(e){
+			e.preventDefault();
+
+ 			properties = {};
+			properties.color = formProperties.elements['color'].value;
+			properties.enable = formProperties.elements['enable'].checked;
+
+			updateStyle(state, properties);
+		});
+
+		/* FUNCION PRINCIPAL */
 		function main()
 		{
 		
@@ -335,8 +442,6 @@ for storing references to ports.)
 
 				return tip;
 			};
-
-			
 
 
 			graph.getModel().beginUpdate();
@@ -450,10 +555,20 @@ for storing references to ports.)
 				undoManager.redo();
 			}));
 
-			// Shows XML for debugging the actual model
+			// Delete
 			botonera.appendChild(mxUtils.button('Delete', function()
 			{
 				graph.removeCells();
+				propertiesContainer.style.display = 'none';
+			}));
+
+			// XML
+			// Adds an option to view the XML of the graph
+			botonera.appendChild(mxUtils.button('View XML', function()
+			{
+				var encoder = new mxCodec();
+				var node = encoder.encode(graph.getModel());
+				mxUtils.popup(mxUtils.getPrettyXml(node), true);
 			}));
 			
 			// Wire-mode
@@ -462,6 +577,31 @@ for storing references to ports.)
 			
 			botonera.appendChild(checkbox);
 			mxUtils.write(botonera, 'Wire Mode');
+			
+			// Grid
+			var checkbox2 = document.createElement('input');
+			checkbox2.setAttribute('type', 'checkbox');
+			checkbox2.setAttribute('checked', 'true');
+			
+			botonera.appendChild(checkbox2);
+			mxUtils.write(botonera, 'Grid');
+			
+			mxEvent.addListener(checkbox2, 'click', function(evt)
+			{
+				if (checkbox2.checked)
+				{
+					container.style.background = 'url(\'images/wires-grid.gif\')';
+				}
+				else
+				{ 
+					container.style.background = '';
+				}
+				
+				container.style.backgroundColor =  'white';
+			});
+			mxEvent.disableContextMenu(container);
+
+
 			
 			// Starts connections on the background in wire-mode
 			var connectionHandlerIsStartEvent = graph.connectionHandler.isStartEvent;
@@ -497,28 +637,7 @@ for storing references to ports.)
 				connectionHandlerMouseUp.apply(this, arguments);
 			};
 			
-			// Grid
-			var checkbox2 = document.createElement('input');
-			checkbox2.setAttribute('type', 'checkbox');
-			checkbox2.setAttribute('checked', 'true');
-			
-			botonera.appendChild(checkbox2);
-			mxUtils.write(botonera, 'Grid');
-			
-			mxEvent.addListener(checkbox2, 'click', function(evt)
-			{
-				if (checkbox2.checked)
-				{
-					container.style.background = 'url(\'images/wires-grid.gif\')';
-				}
-				else
-				{ 
-					container.style.background = '';
-				}
-				
-				container.style.backgroundColor =  'white';
-			});
-			mxEvent.disableContextMenu(container);
+
 		};
 	</script>
 <!--  
