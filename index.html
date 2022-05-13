@@ -42,6 +42,14 @@ for storing references to ports.)
 		<form id="formPropiedades">
 			<div style="margin-bottom: 10px;">Seleccione Color: <input type="color" name="color" ></div>
 			<div style="margin-bottom: 10px;">Habilitado: <input type="checkbox" name="enable" ></div>
+			<div style="margin-bottom: 10px;">Rotar: 
+				<select name="rotation" id="">
+					<option value="0">0</option>
+					<option value="90">90</option>
+					<option value="180">180</option>
+					<option value="270">270</option>
+				</select>
+			</div>
 			<div style="text-align: center;"><input type="submit" value="Guardar"></div>
 		</form>
 	</div>
@@ -188,6 +196,10 @@ for storing references to ports.)
 			style['resizable'] = '0';
 			style['rounded'] = '1';
 			style['strokeWidth'] = strokeWidth;
+			style['portConstraintRotation'] = '1';
+			style['rotation'] = '0';
+			style['noLabel'] = '1';
+			
 
 			// Creates new toolbar without event processing
 			var toolbar = new mxToolbar(document.getElementById('toolbar'));
@@ -216,9 +228,11 @@ for storing references to ports.)
 
 			// TODO: RECORRER UN FOR PARA CADA ELEMENTO
 				
-			addVertex('images/toolbar/resistor.svg', 80, 40, 'shape=resistor;verticalLabelPosition=top', 'Resistor');
-			addVertex('images/toolbar/interruptor.svg', 40, 40, 'shape=interruptor;verticalLabelPosition=top', 'Interuptor');
-			addVertex('images/toolbar/seccionador.svg', 40, 40, 'shape=seccionador;verticalLabelPosition=top', 'Seccionador');
+		//	addVertex('images/toolbar/resistor.svg', 80, 40, 'shape=resistor;verticalLabelPosition=top', 'Resistor');
+			addVertex('images/toolbar/EQC_INT.svg', 40, 40, 'shape=interruptor;image=images/toolbar/EQC_INT.svg;', 'Interuptor');
+			addVertex('images/toolbar/EQC_SEC.svg', 40, 40, 'shape=seccionador;image=images/toolbar/EQC_SEC.svg;', 'Seccionador');
+			addVertex('images/toolbar/EQS_TRAFO2.svg', 40, 40, 'shape=trafo_2;image=images/toolbar/EQS_TRAFO2.svg;', 'Trafo_2');
+			addVertex('images/toolbar/EQS_TRAFO3.svg', 40, 40, 'shape=trafo_3;image=images/toolbar/EQS_TRAFO3.svg;', 'Trafo_3');
 
 			// graph.getSelectionModel().addListener(mxEvent.CHANGE, function()
 			// 		{
@@ -243,11 +257,20 @@ for storing references to ports.)
 				var w = vertex.geometry.width;
 				var h = vertex.geometry.height;
 
+				graph.setCellStyles('noLabel', 1 );
+
 				var node = doc.createElement(title)
 				node.setAttribute('color', strokeColor);
 				node.setAttribute('enable', false);
-
+				node.setAttribute('rotation', '0');
+				node.setAttribute('value', vertex.getValue());
+				
 			 	graph.insertVertex(graph.getDefaultParent(),null , node, x, y, w, h, vertex.style );
+				
+				
+				console.log(vertex.getStyle())
+
+
 
 				 // TODO: En la librería  * Class: mxCell línea 42503
 				 // Se puede generar un metodo y una prop custom para guardar ahí las variables personalizadas, consularlo con los muchachos
@@ -302,6 +325,7 @@ for storing references to ports.)
 						propertiesContainer.style.display = 'block';
 						// obtengo las propiedades generadas y las hago globales para cargarlas en el formulario
 						formProperties.elements['color'].value = state.cell.value.getAttribute('color');
+						formProperties.elements['rotation'].value = state.cell.value.getAttribute('rotation');
 					 	formProperties.elements['enable'].checked = state.cell.value.getAttribute('enable') === 'true' ? true : false;
 					
 					} else {
@@ -326,7 +350,9 @@ for storing references to ports.)
 			console.log(state)
 			// CAMBIO EN LA VISTA
 			state.style[mxConstants.STYLE_STROKECOLOR] = properties.color;
-
+			graph.setCellStyles('rotation', properties.rotation );
+			graph.setCellStyles('strokeColor', properties.color );
+			
 			// actualiza los cambios en la vista.
 			state.shape.apply(state);
 			state.shape.redraw();
@@ -334,19 +360,26 @@ for storing references to ports.)
 			// CAMBIO EN EL COMPONENTE (XML)
 			state.cell.setAttribute('color', properties.color);
 			state.cell.setAttribute('enable', properties.enable);
+			state.cell.setAttribute('rotation', properties.rotation);
 		 	// state.cell.style[mxConstants.STYLE_STROKECOLOR] = properties.color;
-			 graph.setCellStyles('strokeColor', properties.color );
+
 			
 		};
 
 
-		formProperties.addEventListener('submit', function(e){
+		formProperties.addEventListener('change', function(e){
 			e.preventDefault();
 
  			properties = {};
 			properties.color = formProperties.elements['color'].value;
 			properties.enable = formProperties.elements['enable'].checked;
+			properties.rotation = formProperties.elements['rotation'].value;
 
+			updateStyle(state, properties);
+		});
+
+		formProperties.addEventListener('submit', function(e){
+			e.preventDefault();
 			updateStyle(state, properties);
 		});
 
@@ -374,25 +407,93 @@ for storing references to ports.)
 
 			// Adds rubberband selection
 			new mxRubberband(graph);
-			
+
+		
 			// Alternative solution for implementing connection points without child cells.
 			// This can be extended as shown in portrefs.html example to allow for per-port
 			// incoming/outgoing direction.
 			graph.getAllConnectionConstraints = function(terminal)
 			{
 			   var geo = (terminal != null) ? this.getCellGeometry(terminal.cell) : null;
+				// console.log('Geometría en la que está el mouse', geo);
+				 console.log('Terminal en la que está el mouse', terminal);
+
+				 //los puntos que forman la línea se obtienen de "absolutePoints" terminal.absolutePoints
 
 			   if ((geo != null ? !geo.relative : false) &&
 				   this.getModel().isVertex(terminal.cell) &&
 				   this.getModel().getChildCount(terminal.cell) == 0)
 			   {
-					return [new mxConnectionConstraint(new mxPoint(0, 0.5), false),
-				    	new mxConnectionConstraint(new mxPoint(1, 0.5), false)];
+
+				var ports = terminal.shape.getPorts();
+				var cstrs = new Array();
+				for (var id in ports)
+						{
+							var port = ports[id];
+							
+							var cstr = new mxConnectionConstraint(new mxPoint(port.x, port.y), port.perimeter);
+							cstr.id = id;
+							cstrs.push(cstr);
+						}
+						
+						return cstrs;
+				
 			    }
 
 				return null;
 			};
 
+
+			graph.setConnectionConstraint = function(edge, terminal, source, constraint)
+			{
+				if (constraint != null)
+				{
+					var key = (source) ? mxConstants.STYLE_SOURCE_PORT : mxConstants.STYLE_TARGET_PORT;
+					
+					if (constraint == null || constraint.id == null)
+					{
+						this.setCellStyles(key, null, [edge]);
+					}
+					else if (constraint.id != null)
+					{
+						this.setCellStyles(key, constraint.id, [edge]);
+					}
+				}
+			};
+
+			// Returns the port for the given connection
+			graph.getConnectionConstraint = function(edge, terminal, source)
+			{
+				var key = (source) ? mxConstants.STYLE_SOURCE_PORT : mxConstants.STYLE_TARGET_PORT;
+				var id = edge.style[key];
+				
+				if (id != null)
+				{
+					var c =  new mxConnectionConstraint(null, null);
+					c.id = id;
+					
+					return c;
+				}
+				
+				return null;
+			};
+
+			// Returns the actual point for a port by redirecting the constraint to the port
+			graphGetConnectionPoint = graph.getConnectionPoint;
+			graph.getConnectionPoint = function(vertex, constraint)
+			{
+				if (constraint.id != null && vertex != null && vertex.shape != null)
+				{
+					var port = vertex.shape.getPorts()[constraint.id];
+					
+					if (port != null)
+					{
+						constraint = new mxConnectionConstraint(new mxPoint(port.x, port.y), port.perimeter);
+					}
+				}
+				
+				return graphGetConnectionPoint.apply(this, arguments);
+			};
 			// Makes sure non-relative cells can only be connected via constraints
 			graph.connectionHandler.isConnectableCell = function(cell)
 			{
@@ -453,54 +554,7 @@ for storing references to ports.)
 			graph.getModel().beginUpdate();
 			try
 			{
-
-				/**
-				 * 
-				 * CUADRADO 
-				 * 
-				 */
-
-				// var interruptor = graph.insertVertex(parent, null, 'Interruptor', 80, 80, 40, 40,
-				// 		'verticalLabelPosition=top;verticalAlign=bottom;fillColor=' + fillColor);
-				// 		interruptor.setConnectable(false);
-
-				// var interruptor_c1 = graph.insertVertex(interruptor, null, '1', 0, 0, 10, 40,
-				// 		'shape=line;align=left;verticalAlign=middle;fontSize=10;routingCenterX=-0.5;'+
-				// 		'spacingLeft=12;fontColor=' + fontColor + ';strokeColor=' + strokeColor);
-				// 		interruptor_c1.geometry.relative = true;
-				// 		interruptor_c1.geometry.offset = new mxPoint(-interruptor_c1.geometry.width, 0);
-
-				// var interruptor_c2 = graph.insertVertex(interruptor, null, '2', 0, 0, 10, 40,
-				// 		'shape=line;verticalAlign=middle;fontSize=10;routingCenterX=0.5;'+
-				// 		'spacingRight=20;fontColor=' + fontColor + ';strokeColor=' + strokeColor);
-				// 		interruptor_c2.geometry.relative = true;
-				// 		interruptor_c2.geometry.offset = new mxPoint(40 ,0);
-
-
-				// var seccionador = graph.insertVertex(parent, null, null, 300, 300, 40, 40);
-				// var etiqueta = graph.insertVertex(seccionador, null, 'seccionador', 0, 0, -20, 0, null, true);
-				// seccionador.style= 'rotation=45';
-				// seccionador.setConnectable(false);
-
-
-				// var seccionador_c1 = graph.insertVertex(seccionador, null, '1', 0, 0, 10, 40,
-				// 		'shape=line;align=left;verticalAlign=middle;fontSize=10;routingCenterX=-0.5;'+
-				// 		'spacingLeft=12;fontColor=' + fontColor + ';strokeColor=' + strokeColor);
-				// 		seccionador_c1.geometry.relative = true;
-				// 		seccionador_c1.geometry.offset = new mxPoint(-5, 20);
-
-				// var seccionador_c2 = graph.insertVertex(seccionador, null, '2', 0, 0, 10, 40,
-				// 		'shape=line;verticalAlign=middle;fontSize=10;routingCenterX=0.5;'+
-				// 		'spacingRight=20;fontColor=' + fontColor + ';strokeColor=' + strokeColor);
-				// 		seccionador_c2.geometry.relative = true;
-				// 		seccionador_c2.geometry.offset = new mxPoint(35 , -20);
-				
-				/**
-				 * 
-				 * FIN CUADRADO 
-				 * 
-				 */
-						
+				// CABLES (No se si van)
 				var b1 = graph.insertEdge(parent, null, 'B1' );
 				b1.geometry.setTerminalPoint(new mxPoint(000, 20), true);
 				b1.geometry.setTerminalPoint(new mxPoint(600, 20), false);
@@ -1179,9 +1233,12 @@ for storing references to ports.)
 		};
 	</script>
 <!--  
-	Imlements a custom resistor shape. Direction currently ignored here.
+	Implemento las formas Customs con sus respectivos puntos de conexiones
 -->
 	<script type="text/javascript">
+		// CONVENSION DE NOMBRE DE PUERTOS CONETABLES; 
+		// SENTIDO HORARIO COMENZANDO DESDE LAS 12:HS
+/*
 		function ResistorShape() { };
 		ResistorShape.prototype = new mxCylinder();
 		ResistorShape.prototype.constructor = ResistorShape;
@@ -1208,42 +1265,85 @@ for storing references to ports.)
 		};
 
 		mxCellRenderer.registerShape('resistor', ResistorShape);
+		ResistorShape.prototype.getPorts = function()
+			{
+				var ports = new Array();
+				ports['a'] = {x: 0, y: 0.5, perimeter: true, constraint: 'west'};
+				ports['b'] = {x: 1, y: 0.5, perimeter: true, constraint: 'east'};
+				ports['c'] = {x: 0.5, y: 0, perimeter: true, constraint: 'north'};
+				ports['d'] = {x: 0.5, y: 1, perimeter: true, constraint: 'south'};
 
+				return ports;
+			};
+*/
 		function SeccionadorShape(){};
-		SeccionadorShape.prototype = new mxCylinder();
+		SeccionadorShape.prototype = new mxImageShape();
 		SeccionadorShape.prototype.constructor = SeccionadorShape;
 
-		SeccionadorShape.prototype.redrawPath = function(path, x, y, w, h, isForeground)
-		{
-			var mh = h/2;
-			var mw = w/2;
-
-			path.moveTo(0, mh);
-			path.lineTo(mh, 0);
-			path.lineTo(h, mw );
-			path.lineTo(mw, w );
-			path.lineTo(0, mh );
-			path.end();
-		};
-
 		mxCellRenderer.registerShape('seccionador', SeccionadorShape);
+		SeccionadorShape.prototype.getPorts = function()
+			{
+				var ports = new Array();
+				ports['Se_1'] = {x: 0, y: 0.5, };
+				ports['Se_2'] = {x: 1, y: 0.5, };
+				ports['Se_3'] = {x: 0.5, y: 0, };
+				ports['Se_4'] = {x: 0.5, y: 1, };
+
+				return ports;
+			};
 
 
 		function InterruptorShape(){};
-		InterruptorShape.prototype = new mxCylinder();
+		InterruptorShape.prototype = new mxImageShape();
 		InterruptorShape.prototype.constructor = InterruptorShape;
 
-		InterruptorShape.prototype.redrawPath = function(path, x, y, w, h, isForeground)
-		{
-			path.moveTo(0, w);
-			path.lineTo(w, h );
-			path.lineTo(h, 0 );
-			path.lineTo(0, 0 );
-			path.lineTo(0, w );
- 		  path.end();
-		};
-
 		mxCellRenderer.registerShape('interruptor', InterruptorShape);
+
+		InterruptorShape.prototype.getPorts = function()
+			{
+				var ports = new Array();
+				ports['In_1'] = {x: 1, y: 0.5, perimeter: true, constraint: 'east'};
+				ports['In_2'] = {x: 0.5, y: 0, perimeter: true, constraint: 'north'};
+				ports['In_3'] = {x: 0.5, y: 1, perimeter: true, constraint: 'south'};
+				ports['In_4'] = {x: 0, y: 0.5, perimeter: true, constraint: 'west'};
+
+				return ports;
+			};
+
+		function Trafo2Shape(){};
+		Trafo2Shape.prototype = new mxImageShape();
+		Trafo2Shape.prototype.constructor = Trafo2Shape;
+
+		mxCellRenderer.registerShape('trafo_2', Trafo2Shape);
+
+		Trafo2Shape.prototype.getPorts = function()
+			{
+				var ports = new Array();
+				ports['t2_1'] = {x: 0.5, y: 1, perimeter: true, constraint: 'west'};
+				ports['t2_2'] = {x: 0.5, y: 0, perimeter: true, constraint: 'east'};
+
+				return ports;
+			};
+
+			function Trafo3Shape(){};
+		Trafo3Shape.prototype = new mxImageShape();
+		Trafo3Shape.prototype.constructor = Trafo3Shape;
+
+		mxCellRenderer.registerShape('trafo_3', Trafo3Shape);
+
+		Trafo3Shape.prototype.getPorts = function()
+			{
+				var ports = new Array();
+				ports['t3_1'] = {x: 0.5, y: 0, perimeter: true, constraint: 'west'};
+				ports['t3_2'] = {x: 0.1, y: 1, perimeter: true, constraint: 'east'};
+				ports['t3_3'] = {x: 0.9, y: 1, perimeter: true, constraint: 'north'};
+				
+				return ports;
+			};
+		console.log(Trafo3Shape.prototype);
+			
+
+
 	</script>
 
 
@@ -1379,47 +1479,6 @@ for storing references to ports.)
 	};
 	</script>
 
-	<script>
-		function agregaResistor(){
 
-		var v2 = graph.insertVertex(parent, null, 'R1', 220, 220, 80, 20,
-					'shape=resistor;verticalLabelPosition=top;verticalAlign=bottom;strokeColor=#000000;');
-                    v2.setConnectable(true);
-		}
-		function agregaInterruptor(){
-			console.log('agrega Interruptor');
-
-			var interruptor = graph.insertVertex(parent, null, 'Interruptor', 200, 200, 40, 40,
-					'shape=interruptor;verticalLabelPosition=top;verticalAlign=bottom;strokeColor=#000000;');
-            
-					interruptor.setConnectable(true);
-		}
-		function agregaSeccionador(){
-			console.log('agrega Seccionador');
-
-			var seccionador = graph.insertVertex(parent, null, 'Seccionador', 200, 200, 40, 40,
-					'shape=seccionador;verticalLabelPosition=top;verticalAlign=bottom;strokeColor=#000000;');
-					seccionador.setConnectable(true);
-
-
-			// var seccionador = graph.insertVertex(parent, null, null, 300, 300, 40, 40);
-			// seccionador.style= 'rotation=45';
-			// seccionador.setConnectable(false);
-			// var etiqueta = graph.insertVertex(seccionador, null, 'seccionador', 0, 0, -20, 0, null, true);
-
-			// var seccionador_c1 = graph.insertVertex(seccionador, null, '1', 0, 0, 10, 40,
-			// 			'shape=line;align=left;verticalAlign=middle;fontSize=10;routingCenterX=-0.5;'+
-			// 			'spacingLeft=12;fontColor=' + fontColor + ';strokeColor=' + strokeColor);
-			// 			seccionador_c1.geometry.relative = true;
-			// 			seccionador_c1.geometry.offset = new mxPoint(-5, 20);
-
-			// 	var seccionador_c2 = graph.insertVertex(seccionador, null, '2', 0, 0, 10, 40,
-			// 			'shape=line;verticalAlign=middle;fontSize=10;routingCenterX=0.5;'+
-			// 			'spacingRight=20;fontColor=' + fontColor + ';strokeColor=' + strokeColor);
-			// 			seccionador_c2.geometry.relative = true;
-			// 			seccionador_c2.geometry.offset = new mxPoint(35 , -20);
-
-		}
-	</script>
 </body>
 </html>
