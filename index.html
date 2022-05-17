@@ -267,8 +267,23 @@ for storing references to ports.)
 				node.setAttribute('enable', false);
 				node.setAttribute('rotation', '0');
 				node.setAttribute('value', vertex.getValue());
-				
-			 	graph.insertVertex(graph.getDefaultParent(),null , node, x, y, w, h, vertex.style );
+
+                
+				if(vertex.value == 'Trafo_3'){
+					//console.log(vertex);
+					var master = graph.insertVertex(graph.getDefaultParent(), null, node, x, y, w, h, vertex.style );
+					master.setConnectable(false);
+
+					var v11 = graph.insertVertex(master, null, node, 10, 3, 20, 20, 'shape=trafo_3_1;', false);
+					v11.setConnectable(true);
+
+					var v12 = graph.insertVertex(master, null, node, 10, 17, 20, 20, 'shape=trafo_3_2;', false);
+					v12.setConnectable(true);
+
+				}else {
+					graph.insertVertex(graph.getDefaultParent(),null , node, x, y, w, h, vertex.style );
+				}
+			
 				
 				
 				console.log(vertex.getStyle())
@@ -1328,8 +1343,26 @@ for storing references to ports.)
 				return ports;
 			};
 
-			function Trafo3Shape(){};
-		Trafo3Shape.prototype = new mxImageShape();
+		// 	function Trafo3Shape(){};
+		// Trafo3Shape.prototype = new mxImageShape();
+		// Trafo3Shape.prototype.constructor = Trafo3Shape;
+
+		// mxCellRenderer.registerShape('trafo_3', Trafo3Shape);
+
+		// Trafo3Shape.prototype.getPorts = function()
+		// 	{
+		// 		var ports = new Array();
+		// 		ports['t3_1'] = {x: 0.5, y: 0, perimeter: true, constraint: 'west'};
+		// 		ports['t3_2'] = {x: 0.1, y: 1, perimeter: true, constraint: 'east'};
+		// 		ports['t3_3'] = {x: 0.9, y: 1, perimeter: true, constraint: 'north'};
+				
+		// 		return ports;
+		// 	};
+		// console.log(Trafo3Shape.prototype);
+
+
+        function Trafo3Shape(){};
+		Trafo3Shape.prototype = new mxShape();
 		Trafo3Shape.prototype.constructor = Trafo3Shape;
 
 		mxCellRenderer.registerShape('trafo_3', Trafo3Shape);
@@ -1343,7 +1376,44 @@ for storing references to ports.)
 				
 				return ports;
 			};
+			
 		console.log(Trafo3Shape.prototype);
+			
+
+
+		function Trafo3Shape_1(){};
+		//Trafo3Shape.prototype = new mxImageShape();
+		Trafo3Shape_1.prototype = new mxEllipse ();
+		
+		Trafo3Shape_1.prototype.constructor = Trafo3Shape_1;
+
+		Trafo3Shape_1.prototype.getPorts = function()
+			{
+				var ports = new Array();
+				ports['t3_1'] = {x: 0.5, y: 0, perimeter: true, constraint: 'west'};
+				
+				return ports;
+			};
+
+		mxCellRenderer.registerShape('trafo_3_1', Trafo3Shape_1);
+
+		function Trafo3Shape_2(){};
+		//Trafo3Shape.prototype = new mxImageShape();
+		Trafo3Shape_2.prototype = new mxEllipse ();
+		
+		Trafo3Shape_2.prototype.constructor = Trafo3Shape_2;
+
+		Trafo3Shape_2.prototype.getPorts = function()
+			{
+				var ports = new Array();
+				ports['t3_2'] = {x: 0.5, y: 1, perimeter: true, constraint: 'west'};
+				
+				return ports;
+			};
+
+		mxCellRenderer.registerShape('trafo_3_2', Trafo3Shape_2);
+
+		
 			
 
 
